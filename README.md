@@ -6,9 +6,9 @@
 
 pip install -r requirements.txt
 
-2. Create `.env` file
+2. Rename `.env.example` file to `.env`
 
-SUPABASE_URL=your_project_url
+SUPABASE_URL=your_project_url <br />
 SUPABASE_KEY=your_project_key
 
 ## Data
@@ -36,3 +36,25 @@ This script reads all `.docx` files and inserts them into the `meetings` table i
 python query_meetings.py
 
 This prints the meeting id, title and date from the database.
+
+## Database Schema
+
+### meetings
+
+- id (uuid, primary key)
+- title (text, required)
+- meeting_date (date, required)
+- source (text, required)
+- raw_transcript (text, required)
+- created_at (timestamp, default now)
+
+### notes
+
+- id (uuid, primary key)
+- meeting_id (uuid, fk → meetings.id)
+- summary (text)
+- action_items (jsonb)
+- key_takeaways (jsonb)
+- topics (jsonb)
+- next_steps (jsonb)
+- created_at (timestamp, default now)
