@@ -12,8 +12,11 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def get_meetings():
     response = supabase.table("meetings").select("id, title, meeting_date").execute()
-
     meetings = response.data
+
+    if len(meetings) == 0:
+        print("No meetings found in the database.")
+        return
 
     for meeting in meetings:
         print(
