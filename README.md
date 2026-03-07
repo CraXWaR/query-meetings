@@ -1,4 +1,4 @@
-# Meeting Ingestion Task
+# Meeting AI Summary
 
 ## Setup
 
@@ -8,8 +8,9 @@ pip install -r requirements.txt
 
 2. Rename `.env.example` file to `.env`
 
-SUPABASE_URL=your_project_url <br />
-SUPABASE_KEY=your_project_key
+SUPABASE_URL=your_project_url  
+SUPABASE_KEY=your_project_key  
+GROQ_API_KEY=your_groq_api_key  
 
 ## Data
 
@@ -27,9 +28,17 @@ The script extracts:
 
 ## Run ingestion
 
-python ingest_meetings.py
+python database.py
 
-This script reads all `.docx` files and inserts them into the `meetings` table in Supabase.
+This script reads all `.docx` files and inserts them into the `meetings` table in Supabase. Skips meetings that already exist.
+
+## Generate notes
+
+### Single meeting
+python generate_notes.py --meeting_id <id>
+
+### All meetings without notes
+python generate_notes.py --all
 
 ## Query meetings
 
@@ -53,8 +62,19 @@ This prints the meeting id, title and date from the database.
 - id (uuid, primary key)
 - meeting_id (uuid, fk → meetings.id)
 - summary (text)
-- action_items (jsonb)
-- key_takeaways (jsonb)
-- topics (jsonb)
-- next_steps (jsonb)
+- action_items (jsonb) — list of { text, owner, due_date }
+- decisions (jsonb) — list of strings
+- key_takeaways (jsonb) — list of strings
+- topics (jsonb) — list of strings
+- next_steps (jsonb) — list of { text, owner }
 - created_at (timestamp, default now)
+
+## Prompt Strategy
+
+The LLM is instructed to return ONLY valid JSON with no explanation or markdown. The prompt includes the exact schema structure so the model knows what fields to populate.
+
+If the transcript is too long (>20,000 chars), it is split into chunks, processed separately and merged into a single result.
+
+## Output Validation
+
+The JSON response is parsed and validated — if parsing fails (e.g. markdown fences around JSON), the response is cleaned and re-parsed. Missing fields are filled with default empty values instead of throwing an error.
