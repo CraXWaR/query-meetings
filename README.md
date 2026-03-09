@@ -67,11 +67,12 @@ This prints the meeting id, title and date from the database.
 - key_takeaways (jsonb) — list of strings
 - topics (jsonb) — list of strings
 - next_steps (jsonb) — list of { text, owner }
+- llm_raw (text) — raw LLM response
 - created_at (timestamp, default now)
 
 ## Prompt Strategy
 
-The LLM is instructed to return ONLY valid JSON with no explanation or markdown. The prompt includes the exact schema structure so the model knows what fields to populate.
+The LLM is called via LangChain with a ChatPromptTemplate. It is instructed to return ONLY valid JSON with no explanation or markdown. The prompt includes the exact schema structure so the model knows what fields to populate.
 
 If the transcript is too long (>20,000 chars), it is split into chunks, processed separately and merged into a single result.
 
