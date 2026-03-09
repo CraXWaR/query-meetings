@@ -13,7 +13,7 @@ supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
 def read_docx(file_path):
     doc = docx.Document(file_path)
-    return "\n".join([p.text for p in doc.paragraphs])
+    return "\n".join([paragraph.text for paragraph in doc.paragraphs])
 
 
 def extract_date_from_filename(filename):
@@ -32,8 +32,8 @@ def extract_date_from_filename(filename):
 
 
 def ingest_meeting(data_folder):
-    for folder in os.listdir(data_folder):
-        folder_path = os.path.join(data_folder, folder)
+    for sub_folder in os.listdir(data_folder):
+        folder_path = os.path.join(data_folder, sub_folder)
         if not os.path.isdir(folder_path):
             continue
         for file in os.listdir(folder_path):
@@ -49,7 +49,7 @@ def ingest_meeting(data_folder):
                 "id": str(uuid.uuid4()),
                 "title": title,
                 "meeting_date": str(extract_date_from_filename(file)),
-                "source": folder,
+                "source": sub_folder,
                 "raw_transcript": transcript
             }).execute()
             print("Inserted:", title)
@@ -62,7 +62,7 @@ def load_transcript(meeting_id):
     return response.data[0]["raw_transcript"]
 
 
-def insert_notes(meeting_id, notes):
+def insert_notes(meeting_id, notes, raw):
     supabase.table("notes").insert({
         "id": str(uuid.uuid4()),
         "meeting_id": meeting_id,
@@ -72,6 +72,7 @@ def insert_notes(meeting_id, notes):
         "key_takeaways": notes["key_takeaways"],
         "topics": notes["topics"],
         "next_steps": notes["next_steps"],
+        "llm_raw": raw,
     }).execute()
     print(f"Notes inserted for meeting: {meeting_id}")
 
@@ -93,5 +94,5 @@ def get_meetings_without_notes():
 
 
 if __name__ == "__main__":
-    data_folder = os.path.join(os.path.dirname(__file__), "..", "data")
-    ingest_meeting(data_folder)
+    base_data_path = os.path.join(os.path.dirname(__file__), "..", "data")
+    ingest_meeting(base_data_path)

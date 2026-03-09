@@ -1,11 +1,29 @@
-import os
 import json
-from groq import Groq
-from groq.types.chat import ChatCompletionUserMessageParam
 import re
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type, RetryError
+from langchain_groq import ChatGroq
+from langchain_core.prompts import ChatPromptTemplate
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+llm = ChatGroq(model="llama-3.3-70b-versatile")
+
+prompt_template = ChatPromptTemplate.from_template("""
+You are a meeting notes assistant. Analyze the following meeting transcript and return ONLY valid JSON with no explanation, no markdown, no extra text.
+
+Return this exact structure:
+{{
+  "summary": "string",
+  "action_items": [{{ "text": "string", "owner": "string or null", "due_date": "string or null" }}],
+  "decisions": ["string"],
+  "key_takeaways": ["string"],
+  "topics": ["string"],
+  "next_steps": [{{ "text": "string", "owner": "string or null" }}]
+}}
+
+Transcript:
+{transcript}
+""")
+
+chain = prompt_template | llm
 
 MAX_CHARS = 20000
 
@@ -45,12 +63,12 @@ def merge_notes(all_notes):
         "topics": [],
         "next_steps": []
     }
-    for n in all_notes:
-        merged["action_items"].extend(n["action_items"])
-        merged["decisions"].extend(n["decisions"])
-        merged["key_takeaways"].extend(n["key_takeaways"])
-        merged["topics"].extend(n["topics"])
-        merged["next_steps"].extend(n["next_steps"])
+    for note in all_notes:
+        merged["action_items"].extend(note["action_items"])
+        merged["decisions"].extend(note["decisions"])
+        merged["key_takeaways"].extend(note["key_takeaways"])
+        merged["topics"].extend(note["topics"])
+        merged["next_steps"].extend(note["next_steps"])
     return merged
 
 
@@ -60,32 +78,13 @@ def log_retry(retry_state):
 
 @retry(
     retry=retry_if_exception_type(Exception),
-    wait=wait_exponential(multiplier=1, min=20, max=60),
-    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=10, max=40),
+    stop=stop_after_attempt(2),
     before_sleep=log_retry
 )
 def _call_llm(transcript):
-    prompt = f"""
-You are a meeting notes assistant. Analyze the following meeting transcript and return ONLY valid JSON with no explanation, no markdown, no extra text.
-
-Return this exact structure:
-{{
-  "summary": "string",
-  "action_items": [{{ "text": "string", "owner": "string or null", "due_date": "string or null" }}],
-  "decisions": ["string"],
-  "key_takeaways": ["string"],
-  "topics": ["string"],
-  "next_steps": [{{ "text": "string", "owner": "string or null" }}]
-}}
-
-Transcript:
-{transcript}
-"""
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[ChatCompletionUserMessageParam(role="user", content=prompt)]
-    )
-    content = response.choices[0].message.content
+    response = chain.invoke({"transcript": transcript})
+    content = response.content
     if content is None:
         raise ValueError("LLM returned empty response.")
     return content

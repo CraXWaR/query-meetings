@@ -1,5 +1,8 @@
 supabase
 python-dotenv
 python-docx
-groq
 tenacity
+pytest
+groq
+langchain-core
+langchain-groq

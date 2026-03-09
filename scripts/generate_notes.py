@@ -1,10 +1,6 @@
-import os
 import argparse
-from database import load_transcript, insert_notes, get_meetings_without_notes
+from database import load_transcript, insert_notes, get_meetings_without_notes, supabase
 from llm_service import llm_client, validate_notes
-from supabase import create_client
-
-supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
 
 def generate_notes_by_meeting(meeting_id):
@@ -25,7 +21,7 @@ def generate_notes_by_meeting(meeting_id):
         return False
 
     notes = validate_notes(raw)
-    insert_notes(meeting_id, notes)
+    insert_notes(meeting_id, notes, raw)
     print("Notes generated successfully:")
     print(notes)
     return True
